@@ -33,34 +33,34 @@ pipeline {
 
                     //define the flavor based on the branch
                     if("${params.Flavor}" != "") {
-                        Flavor = "${params.Flavor}"
+                        flavor = "${params.Flavor}"
                     } else {
                         switch(env.BRANCH_NAME) {
                             case "develop":
-                                Flavor = "Dev"
+                                flavor = "Dev"
                                 break
                             case "master":
-                                Flavor = "Internal"
+                                flavor = "Internal"
                                 break
                             case "release":
-                                Flavor = "Prod&Candidate"
+                                flavor = "Prod&Candidate"
                                 break
                             default:
-                                Flavor = "Experimental"
+                                flavor = "Experimental"
                                 break
                         }
                     }
 
                     //define the default BuildType based on the branch
                     if("${params.BuildType}" != "") {
-                        BuildType = "${params.BuildType}"
+                        build_type = "${params.BuildType}"
                     } else {
                         switch(env.BRANCH_NAME) {
                             case "release":
-                                Flavor = "Release"
+                                build_type = "Release"
                                 break
                             default:
-                                Flavor = "Debug"
+                                build_type = "Debug"
                                 break
                         }
                     }
@@ -122,7 +122,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :app:test${params.Flavor}${params.BuildType}UnitTest --parallel"
+                sh "./gradlew :app:test${flavor}${build_type}UnitTest --parallel"
             }
         }
 
@@ -134,7 +134,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :storage:test${params.BuildType}UnitTest --parallel"
+                sh "./gradlew :storage:test${flavor}UnitTest --parallel"
             }
         }
 
@@ -146,7 +146,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :wire-android-sync-engine:zmessaging:test${params.BuildType}UnitTest -PwireDeflakeTests=1"
+                sh "./gradlew :wire-android-sync-engine:zmessaging:test${build_type}UnitTest -PwireDeflakeTests=1"
             }
         }
 
@@ -155,7 +155,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew --profile assemble${params.Flavor}${params.BuildType} --parallel -x lint"
+                sh "./gradlew --profile assemble${flavor}${build_type} --parallel -x lint"
             }
         }
 
@@ -176,7 +176,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                archiveArtifacts(artifacts: "app/build/outputs/apk/wire-${params.Flavor.toLowerCase()}-${params.BuildType.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
+                archiveArtifacts(artifacts: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
             }
         }
 
@@ -185,14 +185,14 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-${params.Flavor.toLowerCase()}-${params.BuildType.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/${params.Flavor.toLowerCase()}/wire-${params.Flavor.toLowerCase()}-${params.BuildType.toLowerCase()}-$client_version${BUILD_NUMBER}.apk")
+                s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/${flavor.toLowerCase()}/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk")
             }
         }
     }
 
     post {
         failure {
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${params.Flavor}${params.BuildType} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ FAILED ($last_started) 👎"
+            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ FAILED ($last_started) 👎"
         }
         success {
             script {
@@ -201,11 +201,11 @@ ls -la'''
                         returnStdout: true
                 )
             }
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${params.Flavor}${params.BuildType} **[${BUILD_NUMBER}](${BUILD_URL})** - ✅ SUCCESS 🎉" +
+            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ✅ SUCCESS 🎉" +
                     "\nLast 5 commits:\n```\n$lastCommits\n```"
         }
         aborted {
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${params.Flavor}${params.BuildType} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ ABORTED ($last_started) "
+            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ ABORTED ($last_started) "
         }
     }
 }
