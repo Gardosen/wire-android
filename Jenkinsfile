@@ -122,7 +122,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :app:test${flavor}${build_type}UnitTest --parallel"
+                sh "./gradlew :app:test$flavor$build_typeUnitTest --parallel"
             }
         }
 
@@ -134,7 +134,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :storage:test${flavor}UnitTest --parallel"
+                sh "./gradlew :storage:test$flavorUnitTest --parallel"
             }
         }
 
@@ -146,7 +146,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew :wire-android-sync-engine:zmessaging:test${build_type}UnitTest -PwireDeflakeTests=1"
+                sh "./gradlew :wire-android-sync-engine:zmessaging:test$build_typeUnitTest -PwireDeflakeTests=1"
             }
         }
 
@@ -155,7 +155,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                sh "./gradlew --profile assemble${flavor}${build_type} --parallel -x lint"
+                sh "./gradlew --profile assemble$flavor$build_type --parallel -x lint"
             }
         }
 
@@ -176,7 +176,7 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                archiveArtifacts(artifacts: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
+                archiveArtifacts(artifacts: "app/build/outputs/apk/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
             }
         }
 
@@ -185,14 +185,14 @@ ls -la'''
                 script {
                     last_started = env.STAGE_NAME
                 }
-                s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/${flavor.toLowerCase()}/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-$client_version${BUILD_NUMBER}.apk")
+                s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/$flavor.toLowerCase()/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk")
             }
         }
     }
 
     post {
         failure {
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ FAILED ($last_started) 👎"
+            wireSend secret: env.WIRE_BOT_SECRET, message: "$flavor$build_type **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ FAILED ($last_started) 👎"
         }
         success {
             script {
@@ -201,11 +201,11 @@ ls -la'''
                         returnStdout: true
                 )
             }
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ✅ SUCCESS 🎉" +
+            wireSend secret: env.WIRE_BOT_SECRET, message: "$flavor$build_type **[${BUILD_NUMBER}](${BUILD_URL})** - ✅ SUCCESS 🎉" +
                     "\nLast 5 commits:\n```\n$lastCommits\n```"
         }
         aborted {
-            wireSend secret: env.WIRE_BOT_SECRET, message: "${flavor}${build_type} **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ ABORTED ($last_started) "
+            wireSend secret: env.WIRE_BOT_SECRET, message: "$flavor$build_type **[${BUILD_NUMBER}](${BUILD_URL})** - ❌ ABORTED ($last_started) "
         }
     }
 }
