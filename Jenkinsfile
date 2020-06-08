@@ -67,9 +67,9 @@ pipeline {
           configFile(fileId: 'd8c84572-6a63-473b-899c-c160d81b06c9', targetLocation: 'app/zclient-test-key.keystore.asc')
           ])
             {
-                base64 --decode app/zclient-debug-key.keystore.asc > app/zclient-debug-key.keystore
-                base64 --decode app/zclient-release-key.keystore.asc > app/zclient-release-key.keystore
-                base64 --decode app/zclient-test-key.keystore.asc > app/zclient-test-key.keystore
+                sh 'base64 --decode app/zclient-debug-key.keystore.asc > app/zclient-debug-key.keystore'
+                sh 'base64 --decode app/zclient-release-key.keystore.asc > app/zclient-release-key.keystore'
+                sh 'base64 --decode app/zclient-test-key.keystore.asc > app/zclient-test-key.keystore'
             }
         }
       }
