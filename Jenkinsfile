@@ -12,17 +12,17 @@ pipeline {
           last_started = env.STAGE_NAME
           //define the client_version based on the parameters or env
 
-            client_version = "0.0.0"
+          client_version = "0.0.0"
           if ("${params.ClientVersion}" != "") {
             client_version = "${params.ClientVersion}"
           } else {
             client_version = env.CLIENT_VERSION
           }
-            echo "Client version is $client_version"
+          echo "Client version is $client_version"
 
           //define the flavor based on the branch
-            flavor = "TestFlavor" //default flavor
-            if("${params.Flavor}" != "") {
+          flavor = "TestFlavor" //default flavor
+          if("${params.Flavor}" != "") {
             flavor = "${params.Flavor}"
           } else {
             switch(env.BRANCH_NAME) {
@@ -61,16 +61,11 @@ pipeline {
         }
 
         configFileProvider([
-          configFile(fileId: '6ed3e6e2-6845-4729-8f8f-cf4c565da6fc', targetLocation: 'app/signing.gradle'),
-          configFile(fileId: 'dc6c5bea-7fff-4dab-a8eb-696b5af3cd6c', targetLocation: 'app/zclient-debug-key.keystore.asc'),
-          configFile(fileId: 'ad99b3ec-cc04-4897-96b0-864151ac38b8', targetLocation: 'app/zclient-release-key.keystore.asc'),
-          configFile(fileId: 'd8c84572-6a63-473b-899c-c160d81b06c9', targetLocation: 'app/zclient-test-key.keystore.asc')
-          ])
-            {
-                sh 'base64 --decode app/zclient-debug-key.keystore.asc > app/zclient-debug-key.keystore'
-                sh 'base64 --decode app/zclient-release-key.keystore.asc > app/zclient-release-key.keystore'
-                sh 'base64 --decode app/zclient-test-key.keystore.asc > app/zclient-test-key.keystore'
-            }
+                              configFile(fileId: '6ed3e6e2-6845-4729-8f8f-cf4c565da6fc', targetLocation: 'app/signing.gradle'),
+                              configFile(fileId: 'dc6c5bea-7fff-4dab-a8eb-696b5af3cd6c', targetLocation: 'app/zclient-debug-key.keystore.asc'),
+                              configFile(fileId: 'ad99b3ec-cc04-4897-96b0-864151ac38b8', targetLocation: 'app/zclient-release-key.keystore.asc'),
+                              configFile(fileId: 'd8c84572-6a63-473b-899c-c160d81b06c9', targetLocation: 'app/zclient-test-key.keystore.asc')
+                              ])
         }
       }
 
