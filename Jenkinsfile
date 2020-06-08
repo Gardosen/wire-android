@@ -51,6 +51,8 @@ pipeline {
                         }
                     }
 
+                    echo "Flavor is" $flavor
+
                     //define the default BuildType based on the branch
                     if("${params.BuildType}" != "") {
                         build_type = "${params.BuildType}"
@@ -64,6 +66,8 @@ pipeline {
                                 break
                         }
                     }
+
+                    echo "BuildType is" $build_type
                 }
                 configFileProvider([
                         configFile(fileId: '6ed3e6e2-6845-4729-8f8f-cf4c565da6fc', targetLocation: 'app/signing.gradle'),
