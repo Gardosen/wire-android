@@ -61,11 +61,11 @@ pipeline {
         }
 
         configFileProvider([
-                                                                                          configFile(fileId: '6ed3e6e2-6845-4729-8f8f-cf4c565da6fc', targetLocation: 'app/signing.gradle'),
-                                                                                          configFile(fileId: 'dc6c5bea-7fff-4dab-a8eb-696b5af3cd6c', targetLocation: 'app/zclient-debug-key.keystore.asc'),
-                                                                                          configFile(fileId: 'ad99b3ec-cc04-4897-96b0-864151ac38b8', targetLocation: 'app/zclient-release-key.keystore.asc'),
-                                                                                          configFile(fileId: 'd8c84572-6a63-473b-899c-c160d81b06c9', targetLocation: 'app/zclient-test-key.keystore.asc')
-                                                                                          ]) {
+                                                                                                              configFile(fileId: '6ed3e6e2-6845-4729-8f8f-cf4c565da6fc', targetLocation: 'app/signing.gradle'),
+                                                                                                              configFile(fileId: 'dc6c5bea-7fff-4dab-a8eb-696b5af3cd6c', targetLocation: 'app/zclient-debug-key.keystore.asc'),
+                                                                                                              configFile(fileId: 'ad99b3ec-cc04-4897-96b0-864151ac38b8', targetLocation: 'app/zclient-release-key.keystore.asc'),
+                                                                                                              configFile(fileId: 'd8c84572-6a63-473b-899c-c160d81b06c9', targetLocation: 'app/zclient-test-key.keystore.asc')
+                                                                                                              ]) {
             echo 'Config Files loaded'
           }
 
@@ -137,7 +137,7 @@ ls -la'''
             last_started = env.STAGE_NAME
           }
 
-          sh "./gradlew :storage:test$flavorUnitTest --parallel"
+          sh "./gradlew :storage:test${flavor}UnitTest --parallel"
         }
       }
 
@@ -153,7 +153,7 @@ ls -la'''
             last_started = env.STAGE_NAME
           }
 
-          sh "./gradlew :wire-android-sync-engine:zmessaging:test$build_typeUnitTest -PwireDeflakeTests=1"
+          sh "./gradlew :wire-android-sync-engine:zmessaging:test${build_type}UnitTest -PwireDeflakeTests=1"
         }
       }
 
@@ -163,7 +163,7 @@ ls -la'''
             last_started = env.STAGE_NAME
           }
 
-          sh "./gradlew --profile assemble$flavor$build_type --parallel -x lint"
+          sh "./gradlew --profile assemble${flavor}${build_type} --parallel -x lint"
         }
       }
 
@@ -185,7 +185,7 @@ ls -la'''
             last_started = env.STAGE_NAME
           }
 
-          archiveArtifacts(artifacts: "app/build/outputs/apk/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
+          archiveArtifacts(artifacts: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-${client_version}${BUILD_NUMBER}.apk", allowEmptyArchive: true, caseSensitive: true, onlyIfSuccessful: true)
         }
       }
 
@@ -195,7 +195,7 @@ ls -la'''
             last_started = env.STAGE_NAME
           }
 
-          s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/$flavor.toLowerCase()/wire-$flavor.toLowerCase()-$build_type.toLowerCase()-$client_version${BUILD_NUMBER}.apk")
+          s3Upload(acl: 'Private', file: "app/build/outputs/apk/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-${client_version}${BUILD_NUMBER}.apk", bucket: 'z-lohika', path: "megazord/android/${flavor.toLowerCase()}/wire-${flavor.toLowerCase()}-${build_type.toLowerCase()}-${client_version}${BUILD_NUMBER}.apk")
         }
       }
 
