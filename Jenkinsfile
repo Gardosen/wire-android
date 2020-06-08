@@ -10,16 +10,19 @@ pipeline {
       steps {
         script {
           last_started = env.STAGE_NAME
-          flavor = "TestFlavor" //default flavor
           //define the client_version based on the parameters or env
+
+            client_version = "0.0.0"
           if ("${params.ClientVersion}" != "") {
             client_version = "${params.ClientVersion}"
           } else {
             client_version = env.CLIENT_VERSION
           }
+            echo "Client version is $client_version"
 
           //define the flavor based on the branch
-          if("${params.Flavor}" != "") {
+            flavor = "TestFlavor" //default flavor
+            if("${params.Flavor}" != "") {
             flavor = "${params.Flavor}"
           } else {
             switch(env.BRANCH_NAME) {
