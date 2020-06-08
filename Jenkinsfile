@@ -35,36 +35,34 @@ pipeline {
                     if("${params.Flavor}" != "") {
                         Flavor = "${params.Flavor}"
                     } else {
-                        case env.BRANCH_NAME in
-                            develop)
+                        switch(env.BRANCH_NAME) {
+                            case "develop":
                                 Flavor = "Dev"
-                                ;;
-                            master)
+                                break
+                            case "master":
                                 Flavor = "Internal"
-                                ;;
-                            release)
+                                break
+                            case "release":
                                 Flavor = "Prod&Candidate"
-                                ;;
-                            *)
+                                break
+                            default:
                                 Flavor = "Experimental"
-                                ;;
-                        esac
+                                break
+                        }
                     }
 
                     //define the default BuildType based on the branch
                     if("${params.BuildType}" != "") {
                         BuildType = "${params.BuildType}"
                     } else {
-                        case env.BRANCH_NAME in
-                            release)
-                                BuildType = "Release"
-                                ;;
-                            develop)
-                            master)
-                            *)
-                                BuildType = "Debug"
-                                ;;
-                        esac
+                        switch(env.BRANCH_NAME) {
+                            case "release":
+                                Flavor = "Release"
+                                break
+                            default:
+                                Flavor = "Debug"
+                                break
+                        }
                     }
                 }
                 configFileProvider([
