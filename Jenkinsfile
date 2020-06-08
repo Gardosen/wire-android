@@ -3,7 +3,7 @@
 pipeline {
     agent {
         dockerfile {
-            filename 'docker-files/AndroidAgent'
+            filename 'docker-agent/AndroidAgent'
         }
     }
 
