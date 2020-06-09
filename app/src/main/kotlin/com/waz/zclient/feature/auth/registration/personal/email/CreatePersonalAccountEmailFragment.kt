@@ -1,38 +1,38 @@
 package com.waz.zclient.feature.auth.registration.personal.email
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.observe
 import com.waz.zclient.R
-import com.waz.zclient.core.extension.empty
 import com.waz.zclient.core.extension.replaceFragment
 import com.waz.zclient.core.extension.sharedViewModel
 import com.waz.zclient.core.extension.viewModel
 import com.waz.zclient.feature.auth.registration.di.REGISTRATION_SCOPE_ID
+import com.waz.zclient.feature.auth.registration.personal.pincode.CreatePersonalAccountPinCodeFragment
 import kotlinx.android.synthetic.main.fragment_create_personal_account_email.*
 
 class CreatePersonalAccountEmailFragment : Fragment(R.layout.fragment_create_personal_account_email) {
 
-    //TODO handle no internet connections status
     //TODO Add loading status
-    private val createPersonalAccountWithEmailViewModel: CreatePersonalAccountWithEmailViewModel
+    private val createPersonalAccountEmailViewModel: CreatePersonalAccountEmailViewModel
         by viewModel(REGISTRATION_SCOPE_ID)
 
-    private val emailCredentialsViewModel: EmailCredentialsViewModel
-        by sharedViewModel(REGISTRATION_SCOPE_ID)
+    private val emailCredentialsViewModel: EmailCredentialsViewModel by sharedViewModel(REGISTRATION_SCOPE_ID)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         observeEmailValidationData()
         observeActivationCodeData()
+        observeNetworkConnectionError()
         initEmailChangedListener()
         initConfirmationButton()
     }
 
     private fun observeEmailValidationData() {
-        createPersonalAccountWithEmailViewModel.isValidEmailLiveData.observe(viewLifecycleOwner) {
+        createPersonalAccountEmailViewModel.isValidEmailLiveData.observe(viewLifecycleOwner) {
             updateConfirmationButtonStatus(it)
         }
     }
@@ -43,22 +43,21 @@ class CreatePersonalAccountEmailFragment : Fragment(R.layout.fragment_create_per
 
     private fun initEmailChangedListener() {
         createPersonalAccountEmailEditText.doAfterTextChanged {
-            showEmailError(String.empty())
-            createPersonalAccountWithEmailViewModel.validateEmail(it.toString())
+            createPersonalAccountEmailViewModel.validateEmail(it.toString())
         }
     }
 
     private fun initConfirmationButton() {
         updateConfirmationButtonStatus(false)
         createPersonalAccountEmailConfirmationButton.setOnClickListener {
-            createPersonalAccountWithEmailViewModel.sendActivationCode(
+            createPersonalAccountEmailViewModel.sendActivationCode(
                 createPersonalAccountEmailEditText.text.toString()
             )
         }
     }
 
     private fun observeActivationCodeData() {
-        with(createPersonalAccountWithEmailViewModel) {
+        with(createPersonalAccountEmailViewModel) {
             sendActivationCodeSuccessLiveData.observe(viewLifecycleOwner) {
                 emailCredentialsViewModel.saveEmail(
                     createPersonalAccountEmailEditText.text.toString()
@@ -66,7 +65,7 @@ class CreatePersonalAccountEmailFragment : Fragment(R.layout.fragment_create_per
                 showEmailVerificationScreen()
             }
             sendActivationCodeErrorLiveData.observe(viewLifecycleOwner) {
-                showEmailError(getString(it.errorMessage))
+                showGenericErrorDialog(it.message)
             }
         }
     }
@@ -78,9 +77,24 @@ class CreatePersonalAccountEmailFragment : Fragment(R.layout.fragment_create_per
         )
     }
 
-    private fun showEmailError(errorMessage: String) {
-        createPersonalAccountEmailTextInputLayout.error = errorMessage
+    private fun observeNetworkConnectionError() {
+        createPersonalAccountEmailViewModel.networkConnectionErrorLiveData.observe(viewLifecycleOwner) {
+            showNetworkConnectionErrorDialog()
+        }
     }
+
+    private fun showNetworkConnectionErrorDialog() = AlertDialog.Builder(context)
+        .setTitle(R.string.no_internet_connection_title)
+        .setMessage(R.string.no_internet_connection_message)
+        .setPositiveButton(android.R.string.ok) { _, _ -> }
+        .create()
+        .show()
+
+    private fun showGenericErrorDialog(messageResId: Int) = AlertDialog.Builder(context)
+        .setMessage(messageResId)
+        .setPositiveButton(android.R.string.ok) { _, _ -> }
+        .create()
+        .show()
 
     companion object {
         fun newInstance() = CreatePersonalAccountEmailFragment()

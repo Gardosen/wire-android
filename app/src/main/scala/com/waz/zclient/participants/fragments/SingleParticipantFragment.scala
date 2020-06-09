@@ -255,16 +255,7 @@ class SingleParticipantFragment extends FragmentHelper {
 
   override def onViewCreated(v: View, @Nullable savedInstanceState: Bundle): Unit = {
     super.onViewCreated(v, savedInstanceState)
-    syncParticipant()
     initViews(savedInstanceState)
-  }
-
-  def syncParticipant() = for {
-    userService <- inject[Signal[UserService]]
-    id <- participantsController.otherParticipantId
-  } yield id match {
-    case Some(userId) => userService.syncIfNeeded(Set(userId))
-    case None         =>
   }
 
   protected def initViews(savedInstanceState: Bundle): Unit = {

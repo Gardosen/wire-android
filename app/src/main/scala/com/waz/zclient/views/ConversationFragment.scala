@@ -31,7 +31,7 @@ import androidx.annotation.Nullable
 import androidx.appcompat.widget.{ActionMenuView, Toolbar}
 import androidx.recyclerview.widget.{LinearLayoutManager, RecyclerView}
 import com.waz.api.ErrorType
-import com.waz.content.{GlobalPreferences, UsersStorage}
+import com.waz.content.GlobalPreferences
 import com.waz.model.ConversationData.ConversationType
 import com.waz.model.{AccentColor, MessageContent => _, _}
 import com.waz.permissions.PermissionsService
@@ -202,7 +202,7 @@ class ConversationFragment extends FragmentHelper {
 
     zms.flatMap(_.errors.getErrors).onUi { _.foreach(handleSyncError) }
 
-    convController.currentConvName.onUi { updateTitle }
+    convController.currentConvName.onUi { name => updateTitle(name.str) }
 
     cancelPreviewOnChange.onUi {
       case (change, Some(true)) if !change.noChange => imagePreviewCallback.onCancelPreview()

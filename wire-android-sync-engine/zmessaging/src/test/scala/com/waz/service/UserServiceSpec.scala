@@ -22,12 +22,13 @@ import com.waz.model.UserData.ConnectionStatus
 import com.waz.model.{Availability, _}
 import com.waz.service.assets.{AssetService, AssetStorage}
 import com.waz.service.conversation.SelectedConversationService
+import com.waz.service.messages.MessagesService
 import com.waz.service.push.PushService
 import com.waz.specs.AndroidFreeSpec
 import com.waz.sync.SyncServiceHandle
 import com.waz.sync.client.{CredentialsUpdateClient, UsersClient}
 import com.waz.testutils.TestUserPreferences
-import com.waz.threading.Threading
+import com.waz.threading.{CancellableFuture, Threading}
 import com.waz.utils.events.{BgEventSource, Signal, SourceSignal}
 import org.threeten.bp.Instant
 
@@ -36,9 +37,10 @@ import scala.concurrent.Future
 class UserServiceSpec extends AndroidFreeSpec {
 
   private lazy val me = UserData(name = "me").updateConnectionStatus(ConnectionStatus.Self)
+  private lazy val user1 = UserData("other user 1")
   private lazy val meAccount = AccountData(me.id)
 
-  private lazy val users = Seq(me, UserData("other user 1"), UserData("other user 2"), UserData("some name"),
+  private lazy val users = Seq(me, user1, UserData("other user 2"), UserData("some name"),
     UserData("related user 1"), UserData("related user 2"), UserData("other related"),
     UserData("friend user 1"), UserData("friend user 2"), UserData("some other friend")
   )
@@ -55,13 +57,13 @@ class UserServiceSpec extends AndroidFreeSpec {
   val assetsStorage   = mock[AssetStorage]
   val credentials     = mock[CredentialsUpdateClient]
   val selectedConv    = mock[SelectedConversationService]
+  val messages        = mock[MessagesService]
   val userPrefs       = new TestUserPreferences
 
   (usersStorage.optSignal _).expects(*).anyNumberOfTimes().onCall((id: UserId) => Signal.const(users.find(_.id == id)))
   (accountsService.accountsWithManagers _).expects().anyNumberOfTimes().returning(Signal.empty)
   (pushService.onHistoryLost _).expects().anyNumberOfTimes().returning(new SourceSignal(Some(Instant.now())) with BgEventSource)
   (sync.syncUsers _).expects(*).anyNumberOfTimes().returning(Future.successful(SyncId()))
-  (usersStorage.updateOrCreateAll _).expects(*).anyNumberOfTimes().returning(Future.successful(Set.empty))
   (selectedConv.selectedConversationId _).expects().anyNumberOfTimes().returning(Signal.const(None))
 
   private def getService = {
@@ -71,7 +73,7 @@ class UserServiceSpec extends AndroidFreeSpec {
     new UserServiceImpl(
       users.head.id, None, accountsService, accountsStrg, usersStorage, membersStorage,
       userPrefs, pushService, assetService, usersClient, sync, assetsStorage, credentials,
-      selectedConv
+      selectedConv, messages
     )
   }
 
@@ -93,7 +95,7 @@ class UserServiceSpec extends AndroidFreeSpec {
       val userService = new UserServiceImpl(
         users.head.id, someTeamId, accountsService, accountsStrg, usersStorage, membersStorage,
         userPrefs, pushService, assetService, usersClient, sync, assetsStorage, credentials,
-        selectedConv
+        selectedConv, messages
       )
 
       //expect
@@ -115,13 +117,48 @@ class UserServiceSpec extends AndroidFreeSpec {
   feature("load user") {
 
     scenario("update self user") {
-
       val id = users.head.id
+      (usersStorage.updateOrCreateAll _).expects(*).anyNumberOfTimes().returning(Future.successful(Set.empty))
       (usersStorage.get _).expects(id).once().returning(Future.successful(users.headOption))
 
       val service = getService
       result(service.updateSyncedUsers(Seq(UserInfo(id))))
       result(service.getSelfUser).map(_.connection) shouldEqual Some(ConnectionStatus.Self)
+    }
+
+    scenario("check if user exists") {
+      val userInfo = UserInfo(user1.id)
+      (usersClient.loadUser _).expects(user1.id).anyNumberOfTimes().returning(
+        CancellableFuture.successful(Right(Option(userInfo)))
+      )
+      (usersStorage.updateOrCreateAll _).expects(*).anyNumberOfTimes().returning(Future.successful(Set(user1)))
+
+      val service = getService
+      result(service.syncUser(user1.id)) shouldEqual Some(user1)
+    }
+
+    scenario("delete user locally if it the client says it's removed") {
+      val convId = ConvId()
+      val member = ConversationMemberData(user1.id, convId, ConversationRole.AdminRole)
+      (usersClient.loadUser _).expects(user1.id).anyNumberOfTimes().returning(
+        CancellableFuture.successful(Right(None))
+      )
+      (usersStorage.updateOrCreateAll _).expects(*).never()
+      (membersStorage.getByUsers _).expects(Set(user1.id)).anyNumberOfTimes().returning(
+        Future.successful(IndexedSeq(member))
+      )
+      (membersStorage.removeAll _).expects(Set(member.id)).atLeastOnce().returning(
+        Future.successful(())
+      )
+      (messages.addMemberLeaveMessage _).expects(convId, *, user1.id).atLeastOnce().returning(
+        Future.successful(())
+      )
+      (usersStorage.updateAll2 _).expects(Set(user1.id), *).atLeastOnce().onCall { (_: Iterable[UserId], updater: UserData => UserData) =>
+        Future.successful(Seq((user1, updater(user1))))
+      }
+
+      val service = getService
+      result(service.syncUser(user1.id)) shouldEqual None
     }
   }
 }

@@ -36,9 +36,7 @@ import com.waz.threading.Threading
 import com.waz.utils._
 import com.waz.utils.events.Signal
 import com.waz.zclient.calling.CallingActivity
-import com.waz.zclient.calling.controllers.{CallController, CallStartController}
-import com.waz.zclient.common.controllers.UserAccountsController
-import com.waz.zclient.common.controllers.global.AccentColorController
+import com.waz.zclient.calling.controllers.CallStartController
 import com.waz.zclient.conversationlist.ConversationListController
 import com.waz.zclient.conversationlist.views.ConversationBadge.OngoingCall
 import com.waz.zclient.conversationlist.views.ConversationListRow._
@@ -70,61 +68,43 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
   def this(context: Context, attrs: AttributeSet) = this(context, attrs, 0)
   def this(context: Context) = this(context, null, 0)
 
-  implicit val executionContext = Threading.Background
-  implicit val uiStorage = inject[UiStorage]
+  private implicit val executionContext = Threading.Background
+  private implicit val uiStorage = inject[UiStorage]
 
   inflate(R.layout.conv_list_item)
 
-  val controller = inject[ConversationListController]
+  private val controller = inject[ConversationListController]
+  private val zms = inject[Signal[ZMessaging]]
 
-  val zms = inject[Signal[ZMessaging]]
-  val accentColor = inject[AccentColorController].accentColor
-  val callStartController = inject[CallStartController]
-  val callController      = inject[CallController]
-  lazy val userAccountsController = inject[UserAccountsController]
+  private val conversationId = Signal[Option[ConvId]](None)
 
-  val selfId = zms.map(_.selfUserId)
-
-  private val conversationId = Signal[Option[ConvId]]()
-
-  val container = ViewUtils.getView(this, R.id.conversation_row_container).asInstanceOf[ConstraintLayout]
-  val title = ViewUtils.getView(this, R.id.conversation_title).asInstanceOf[TypefaceTextView]
-  val subtitle = ViewUtils.getView(this, R.id.conversation_subtitle).asInstanceOf[TypefaceTextView]
-  val avatar = ViewUtils.getView(this, R.id.conversation_icon).asInstanceOf[ConversationAvatarView]
-  val badge = ViewUtils.getView(this, R.id.conversation_badge).asInstanceOf[ConversationBadge]
-  val separator = ViewUtils.getView(this, R.id.conversation_separator).asInstanceOf[View]
-  val menuIndicatorView = ViewUtils.getView(this, R.id.conversation_menu_indicator).asInstanceOf[MenuIndicatorView]
+  private val conversation = for {
+    Some(convId) <- conversationId
+    conv         <- ConversationSignal(convId)
+  } yield conv
 
   var conversationData = Option.empty[ConversationData]
 
-  val conversation = for {
-    Some(convId) <- conversationId
-    conv <- ConversationSignal(convId)
-  } yield conv
-
-  val members = conversationId.collect { case Some(convId) => convId } flatMap controller.members
-
-  conversation.map { conv =>
-    if (conv.displayName.isEmpty) {
-      // This hack was in the UiModule Conversation implementation
-      // XXX: this is a hack for some random errors, sometimes conv has empty name which is never updated
-      val defaultName = getString(R.string.default_deleted_username)
-      zms.head.foreach {_.conversations.forceNameUpdate(conv.id, defaultName) }
-      Name(defaultName)
-    } else
-      conv.displayName
-  }.onUi { name =>
-    title.setText(name)
+  private lazy val members = conversationId.flatMap {
+    case Some(cId) => controller.members(cId)
+    case None      => Signal.const(Seq.empty[UserId])
   }
 
-  val userTyping = for {
+  private val container = ViewUtils.getView(this, R.id.conversation_row_container).asInstanceOf[ConstraintLayout]
+  private val title = ViewUtils.getView(this, R.id.conversation_title).asInstanceOf[TypefaceTextView]
+  private val subtitle = ViewUtils.getView(this, R.id.conversation_subtitle).asInstanceOf[TypefaceTextView]
+  private val avatar = ViewUtils.getView(this, R.id.conversation_icon).asInstanceOf[ConversationAvatarView]
+  private val badge = ViewUtils.getView(this, R.id.conversation_badge).asInstanceOf[ConversationBadge]
+  private val menuIndicatorView = ViewUtils.getView(this, R.id.conversation_menu_indicator).asInstanceOf[MenuIndicatorView]
+
+  private val userTyping = for {
     z <- zms
     convId <- conversation.map(_.id)
     typing <- Signal.wrap(z.typing.onTypingChanged.filter(_._1 == convId).map(_._2.headOption)).orElse(Signal.const(None))
     typingUser <- userData(typing.map(_.id))
   } yield typingUser
 
-  val badgeInfo = for {
+  private val badgeInfo = for {
     z              <- zms
     conv           <- conversation
     typing         <- userTyping.map(_.nonEmpty)
@@ -134,7 +114,14 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
     isGroupConv    <- z.conversations.groupConversation(conv.id)
   } yield (conv.id, badgeStatusForConversation(conv, conv.unreadCount, typing, availableCalls, callDuration, isGroupConv))
 
-  val subtitleText = for {
+  badgeInfo.onUi {
+    case (convId, status) if conversationData.forall(_.id == convId) =>
+      badge.setStatus(status)
+    case _ =>
+      verbose(l"Outdated badge status")
+  }
+
+  private val subtitleText = for {
     z <- zms
     conv <- conversation
     lastMessage <- controller.lastMessage(conv.id).map(_.lastMsg)
@@ -149,9 +136,16 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
     userName <- missedCallerId.fold2(Signal.const(Option.empty[Name]), u => z.usersStorage.signal(u).map(d => Some(d.name)))
   } yield (conv.id, subtitleStringForLastMessages(conv, otherUser, ms.toSet, lastMessage, lastUnreadMessage, lastUnreadMessageUser, lastUnreadMessageMembers, typingUser, z.selfUserId, isGroupConv, userName))
 
+  subtitleText.onUi {
+    case (convId, text) if conversationData.forall(_.id == convId) =>
+      setSubtitle(text)
+    case _ =>
+      verbose(l"Outdated conversation subtitle")
+  }
+
   private def userData(id: Option[UserId]) = id.fold2(Signal.const(Option.empty[UserData]), uid => UserSignal(uid).map(Option(_)))
 
-  val avatarInfo = for {
+  private lazy val avatarInfo = for {
     z <- zms
     conv <- conversation
     memberIds <- members
@@ -179,27 +173,18 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
 
   // User availability (for 1:1)
   (for {
-    Some(id) <- conversationId
-    availability       <- controller.availability(id)
+    Some(cId)    <- conversationId
+    availability <- controller.availability(cId)
   } yield availability).onUi {
     case Availability.None => AvailabilityView.hideAvailabilityIcon(title)
     case availability      => AvailabilityView.displayStartOfText(title, availability, title.getCurrentTextColor, pushDown = true)
   }
 
-
-  subtitleText.onUi {
-    case (convId, text) if conversationData.forall(_.id == convId) =>
-      setSubtitle(text)
-    case _ =>
-      verbose(l"Outdated conversation subtitle")
-    }
-
-  badgeInfo.onUi {
-    case (convId, status) if conversationData.forall(_.id == convId) =>
-      badge.setStatus(status)
-    case _ =>
-      verbose(l"Outdated badge status")
-  }
+  // conversation name
+  (for {
+    Some(cId) <- conversationId
+    name      <- controller.conversationName(cId)
+  } yield name).onUi(name => title.setText(name.str))
 
   avatarInfo.onUi {
     case (convId, isGroup, members, _, selfTeam) if conversationData.forall(_.id == convId) =>
@@ -220,7 +205,7 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
   badge.onClickEvent {
     case ConversationBadge.IncomingCall =>
       (zms.map(_.selfUserId).currentValue, conversationData.map(_.id)) match {
-        case (Some(acc), Some(cId)) => callStartController.startCall(acc, cId, forceOption = true)
+        case (Some(acc), Some(cId)) => inject[CallStartController].startCall(acc, cId, forceOption = true)
         case _ => //
       }
     case OngoingCall(_) =>
@@ -236,16 +221,16 @@ class NormalConversationListRow(context: Context, attrs: AttributeSet, style: In
   private var maxOffset: Float = .0f
   private var moveToAnimator: ObjectAnimator = _
 
-  def setConversation(conversationData: ConversationData): Unit =
+  def setConversation(conversationData: ConversationData, conversationName: Name): Unit =
     if (this.conversationData.forall(_.id != conversationData.id)) {
       this.conversationData = Some(conversationData)
-      title.setText(if (conversationData.displayName.str.nonEmpty) conversationData.displayName.str else getString(R.string.default_deleted_username))
+      title.setText(conversationName.str)
 
       badge.setStatus(ConversationBadge.Empty)
       subtitle.setText("")
       avatar.clearImages()
       avatar.setAlpha(getResourceFloat(R.dimen.conversation_avatar_alpha_active))
-      conversationId.publish(Some(conversationData.id), Threading.Ui)
+      conversationId.publish(Option(conversationData.id), Threading.Ui)
       closeImmediate()
     }
 
@@ -388,15 +373,13 @@ object ConversationListRow {
     }
   }
 
-  def subtitleStringForLastMessage(messageData: MessageData,
-                                   user:        Option[UserData],
-                                   members:     Vector[UserData],
-                                   isGroup:     Boolean,
-                                   selfId:      UserId,
-                                   isQuote:     Boolean
-                                  )
-                                  (implicit context: Context): String = {
-
+  private def subtitleStringForLastMessage(messageData: MessageData,
+                                           user:        Option[UserData],
+                                           members:     Vector[UserData],
+                                           isGroup:     Boolean,
+                                           selfId:      UserId,
+                                           isQuote:     Boolean
+                                  )(implicit context: Context): String = {
     lazy val senderName = user.map(_.name).getOrElse(Name(getString(R.string.conversation_list__someone)))
     lazy val memberName = members.headOption.map(_.name).getOrElse(Name(getString(R.string.conversation_list__someone)))
 

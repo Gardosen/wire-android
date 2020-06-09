@@ -300,6 +300,11 @@
     <string name="call_banner_incoming_group">%1$s \u30FB %2$s is calling…</string>
     <string name="call_banner_tap_to_return_to_call">Tap to return to call \u30FB %1$s</string>
 
+    <string name="call_error_unsupported_version_title">Please update Wire</string>
+    <string name="call_error_unsupported_version_message">You received a call that isn\'t supported by this version of Wire.\n\nGet the latest version in the Play Store.</string>
+    <string name="call_error_unsupported_version_button_ok">Go to Play Store</string>
+    <string name="call_error_unsupported_version_button_dismiss">Later</string>
+
     <string name="calling_ongoing_call_title">Ongoing call</string>
 
     <string name="calling_ongoing_call_start_message">A call is active in another conversation.\nCalling here will hang up the other call.</string>
@@ -1254,6 +1259,7 @@
     <string name="ephemeral_explanation_text">Timed messages will be turned on for all the participants in this conversation</string>
     <string name="notifications_explanation_text">You can be notified about everything (including audio and video calls) or only when you are mentioned.</string>
     <string name="show_all_participants">Show all (%1$s)</string>
+    <string name="participant_was_removed_from_team">%s was removed from team</string>
 
     <string name="allow_guests_error_title">Something went wrong</string>
     <string name="allow_guests_error_body">Could not allow guests nor services. Please try again.</string>
@@ -1448,6 +1454,9 @@
     <string name="delete_group_conversation_error_message">An error occurred while trying to delete the group. Please try again.</string>
     <string name="delete_group_conversation_error_message_with_group_name">An error occurred while trying to delete the group %1$s. Please try again.</string>
 
+    <!-- No Internet Connection -->
+    <string name="no_internet_connection_title">No Internet Connection</string>
+    <string name="no_internet_connection_message">Please check your Internet connection and try again</string>
 
     <!-- Shortcuts -->
     <string name="shortcut_create_group_label">Create Group</string>
@@ -1520,8 +1529,8 @@
     <string name="composite_message_confirmed_button_content_description">%1$s confirmed</string>
 
     <!-- StartSSO Screen  -->
-    <string name="start_sso_leaving_wire">Leaving Wire</string>
-    <string name="start_sso_redirected_to">You are being redirected to</string>
+    <string name="start_sso_leaving_wire">Redirecting…</string>
+    <string name="start_sso_redirected_to">You are being redirected to your dedicated enterprise service.</string>
     <string name="start_sso_notice">Provide credentials only if you\'re sure this is your organization\'s login.</string>
 </resources>
 

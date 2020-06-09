@@ -2,7 +2,7 @@
 
 object Versions {
     //wire android client
-    const val ANDROID_CLIENT_MAJOR_VERSION = "3.48."
+    const val ANDROID_CLIENT_MAJOR_VERSION = "3.49."
 
     //core
     const val KOTLIN = "1.3.60"
@@ -15,7 +15,7 @@ object Versions {
     const val JACOCO = "0.8.5"
 
     //build
-    const val COROUTINES = "1.3.2"
+    const val COROUTINES = "1.3.7"
     const val WORK_MANAGER = "2.0.1"
     const val ANDROIDX_MATERIAL = "1.0.0"
     const val ANDROIDX_MULTIDEX = "2.0.0"
